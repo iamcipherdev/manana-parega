@@ -8,6 +8,10 @@
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; overflow:hidden; background:#0a0a14; font-family:'Segoe UI',system-ui,sans-serif; }
   #stage { position:fixed; inset:0; max-width:900px; margin:0 auto; overflow:hidden; }
+  #stage.shake { animation:shake .45s; }
+  @keyframes shake { 0%,100%{transform:translate(0)} 20%{transform:translate(-9px,4px)} 40%{transform:translate(8px,-5px)} 60%{transform:translate(-6px,-3px)} 80%{transform:translate(5px,3px)} }
+  #flash { position:absolute; inset:0; z-index:15; pointer-events:none; opacity:0; background:radial-gradient(circle,transparent 40%,rgba(255,40,60,.45)); transition:opacity .15s; }
+  #flash.on { opacity:1; }
   #bg { position:absolute; inset:0; transition:background 1s; }
   .bg-home { background:linear-gradient(180deg,#1a1440 0%,#2b1a5e 60%,#3d2066 100%); }
   .bg-cafe { background:linear-gradient(180deg,#3d1c4d 0%,#6b2a4d 60%,#8a3a4d 100%); }
@@ -17,9 +21,12 @@
   .stars i { position:absolute; width:3px; height:3px; background:#fff; border-radius:50%; opacity:.7; animation:tw 2.5s infinite ease-in-out; }
   @keyframes tw { 50% { opacity:.15; } }
   .moon { position:absolute; top:8%; right:12%; width:70px; height:70px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#fffbe8,#e8d98a); box-shadow:0 0 40px #fff6c0; }
-  #char { position:absolute; bottom:32%; left:50%; transform:translateX(-50%); width:min(64vw,300px); transition:transform .4s; filter:drop-shadow(0 10px 24px rgba(0,0,0,.5)); }
+  #fx { position:absolute; inset:0; z-index:8; pointer-events:none; }
+  #char { position:absolute; bottom:32%; left:50%; transform:translateX(-50%); width:min(66vw,320px); transition:transform .4s; filter:drop-shadow(0 10px 24px rgba(0,0,0,.5)); z-index:4; }
   #char.talk { animation:talk .5s ease-in-out infinite alternate; }
   @keyframes talk { to { transform:translateX(-50%) translateY(-4px); } }
+  #char.hop { animation:hop .5s ease; }
+  @keyframes hop { 30% { transform:translateX(-50%) translateY(-26px); } }
   #meterWrap { position:absolute; top:14px; left:14px; right:14px; z-index:5; }
   #meterLabel { color:#ffb3c7; font-size:13px; letter-spacing:1px; margin-bottom:5px; text-shadow:0 1px 4px #000; display:flex; justify-content:space-between;}
   #meter { height:12px; background:rgba(0,0,0,.55); border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,.18); }
@@ -39,28 +46,47 @@
   .btn:active { transform:scale(.96); }
   .hidden { display:none !important; }
   #endingEmoji { font-size:64px; margin-bottom:10px; }
+  #card { position:absolute; inset:0; z-index:18; display:flex; align-items:center; justify-content:center; pointer-events:none; opacity:0; transition:opacity .5s; }
+  #card.show { opacity:1; }
+  #card div { font-size:clamp(22px,5vw,38px); letter-spacing:4px; color:#ffe3ec; text-shadow:0 0 30px rgba(255,120,170,.8), 0 2px 6px #000; }
+  #muteBtn { position:absolute; top:52px; right:14px; z-index:9; background:rgba(20,16,36,.7); color:#ffb3c7; border:1px solid rgba(255,150,180,.35); border-radius:50%; width:40px; height:40px; font-size:17px; cursor:pointer; }
+  /* minigame */
+  #mg { z-index:22; background:rgba(6,4,18,.96); }
+  #mgCanvas { position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+  #mgHud { position:absolute; top:14px; left:0; right:0; display:flex; justify-content:space-around; color:#ffe3ec; font-size:17px; z-index:2; text-shadow:0 1px 4px #000; }
+  #mgBar { position:absolute; top:52px; left:20%; right:20%; height:8px; background:rgba(255,255,255,.12); border-radius:4px; overflow:hidden; }
+  #mgBarFill { height:100%; width:100%; background:linear-gradient(90deg,#ff8fa3,#c77dff); }
 </style>
 </head>
 <body>
 <div id="stage">
   <div id="bg" class="bg-home"><div class="stars" id="stars"></div><div class="moon"></div></div>
+  <canvas id="fx"></canvas>
   <div id="char"></div>
+  <div id="flash"></div>
   <div id="meterWrap" class="hidden">
     <div id="meterLabel"><span>😡 NARAZGI METER</span><span id="meterVal">70%</span></div>
     <div id="meter"><div id="meterFill"></div></div>
   </div>
+  <button id="muteBtn" class="hidden">🎵</button>
   <div id="dlg" class="hidden">
     <div id="speaker">??</div>
     <div id="text"></div>
     <div id="nextHint">tap to continue ▼</div>
     <div id="choices"></div>
   </div>
+  <div id="card"><div id="cardText"></div></div>
   <div id="menu" class="overlay">
     <h1>MANANA PAREGA 💕</h1>
     <p>Tum anniversary bhool gaye. <b>BUBU</b> naraaz hai.<br>
-    Sahi dialogues chuno, usay date par le jao, aur narazgi meter ko <b>zero</b> ke qareeb lao.<br>
-    Ghalat jawab… aur woh <i>aur</i> naraaz ho jayegi. 😅</p>
+    Sahi dialogues chuno, usay date par le jao, mini-games khelo,<br>
+    aur narazgi meter ko <b>zero</b> ke qareeb lao. 😅</p>
     <button class="btn" id="startBtn">STORY SHURU KARO</button>
+  </div>
+  <div id="mg" class="overlay hidden">
+    <canvas id="mgCanvas"></canvas>
+    <div id="mgHud"><span>💗 <b id="mgScore">0</b></span><span>⏱️ <b id="mgTime">20</b>s</span></div>
+    <div id="mgBar"><div id="mgBarFill"></div></div>
   </div>
   <div id="ending" class="overlay hidden">
     <div id="endingEmoji">💕</div>
@@ -71,48 +97,86 @@
 </div>
 <script>
 'use strict';
-/* ============ CHARACTER ART (SVG expressions) ============ */
+/* ================= CHARACTER ART — BUBU (anime style) ================= */
 function charSVG(expr){
-  const brows = {
-    angry:  '<path d="M58 78 L88 88 M142 78 L112 88" stroke="#3a2418" stroke-width="6" stroke-linecap="round"/>',
-    annoyed:'<path d="M60 80 L88 86 M140 80 L112 86" stroke="#3a2418" stroke-width="5" stroke-linecap="round"/>',
-    neutral:'<path d="M60 78 L88 78 M112 78 L140 78" stroke="#3a2418" stroke-width="5" stroke-linecap="round"/>',
-    soft:   '<path d="M60 76 L88 76 M112 76 L140 76" stroke="#3a2418" stroke-width="4" stroke-linecap="round"/>',
-    happy:  '<path d="M60 74 L88 74 M112 74 L140 74" stroke="#3a2418" stroke-width="4" stroke-linecap="round"/>',
-    blush:  '<path d="M60 74 L88 74 M112 74 L140 74" stroke="#3a2418" stroke-width="4" stroke-linecap="round"/>'
-  }[expr];
-  const eyes = {
-    angry:  '<circle cx="74" cy="102" r="7" fill="#2b1a12"/><circle cx="126" cy="102" r="7" fill="#2b1a12"/>',
-    annoyed:'<circle cx="74" cy="102" r="7" fill="#2b1a12"/><circle cx="126" cy="102" r="7" fill="#2b1a12"/>',
-    neutral:'<circle cx="74" cy="102" r="7" fill="#2b1a12"/><circle cx="126" cy="102" r="7" fill="#2b1a12"/><circle cx="76" cy="100" r="2" fill="#fff"/><circle cx="128" cy="100" r="2" fill="#fff"/>',
-    soft:   '<circle cx="74" cy="102" r="7" fill="#2b1a12"/><circle cx="126" cy="102" r="7" fill="#2b1a12"/><circle cx="76" cy="100" r="2.5" fill="#fff"/><circle cx="128" cy="100" r="2.5" fill="#fff"/>',
-    happy:  '<path d="M66 102 Q74 110 82 102 M118 102 Q126 110 134 102" stroke="#2b1a12" stroke-width="4" fill="none" stroke-linecap="round"/>',
-    blush:  '<path d="M66 102 Q74 110 82 102 M118 102 Q126 110 134 102" stroke="#2b1a12" stroke-width="4" fill="none" stroke-linecap="round"/>'
-  }[expr];
-  const mouth = {
-    angry:  '<path d="M84 138 Q100 130 116 138" stroke="#7a2a2a" stroke-width="5" fill="none" stroke-linecap="round"/>',
-    annoyed:'<path d="M86 140 L114 136" stroke="#7a2a2a" stroke-width="5" stroke-linecap="round"/>',
-    neutral:'<path d="M88 140 Q100 142 112 140" stroke="#7a2a2a" stroke-width="4" fill="none" stroke-linecap="round"/>',
-    soft:   '<path d="M88 138 Q100 146 112 138" stroke="#a03a4a" stroke-width="4" fill="none" stroke-linecap="round"/>',
-    happy:  '<path d="M84 134 Q100 150 116 134" stroke="#a03a4a" stroke-width="5" fill="none" stroke-linecap="round"/>',
-    blush:  '<path d="M86 136 Q100 148 114 136" stroke="#a03a4a" stroke-width="5" fill="none" stroke-linecap="round"/>'
-  }[expr];
-  const blush = (expr==='blush'||expr==='happy')
-    ? '<ellipse cx="58" cy="118" rx="10" ry="6" fill="#ff9db0" opacity="0.7"/><ellipse cx="142" cy="118" rx="10" ry="6" fill="#ff9db0" opacity="0.7"/>' : '';
-  const angerMark = (expr==='angry') ? '<text x="150" y="52" font-size="26" fill="#ff5252">💢</text>' : '';
-  return '<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">'
-    + '<path d="M40 110 Q36 30 100 26 Q164 30 160 110 L158 150 Q140 120 100 122 Q60 120 42 150 Z" fill="#4a2c17"/>'
-    + '<ellipse cx="100" cy="105" rx="52" ry="58" fill="#ffd9b8"/>'
-    + '<path d="M48 100 Q44 40 100 36 Q156 40 152 100 Q140 60 100 62 Q60 60 48 100Z" fill="#4a2c17"/>'
-    + brows + eyes + blush + mouth + angerMark
-    + '<path d="M70 190 Q100 178 130 190 L138 240 L62 240 Z" fill="#8e44ad"/>'
-    + '<circle cx="100" cy="205" r="7" fill="#ffd75e"/>'
-    + '</svg>';
+  const E = {
+    angry:  { brow:'<path d="M52 66 L86 78 M148 66 L114 78" stroke="#2e1a10" stroke-width="5" stroke-linecap="round"/>',
+              eyes:'narrow', mouth:'<path d="M82 152 Q100 144 118 152" stroke="#8a2f2f" stroke-width="5" fill="none" stroke-linecap="round"/>',
+              blush:0, extra:'<text x="158" y="46" font-size="30">💢</text>' },
+    annoyed:{ brow:'<path d="M54 68 L86 74 M146 68 L114 74" stroke="#2e1a10" stroke-width="4.5" stroke-linecap="round"/>',
+              eyes:'half', mouth:'<path d="M86 154 L114 150" stroke="#8a2f2f" stroke-width="4.5" stroke-linecap="round"/>',
+              blush:0, extra:'' },
+    neutral:{ brow:'<path d="M54 66 Q70 62 86 66 M114 66 Q130 62 146 66" stroke="#2e1a10" stroke-width="4" fill="none" stroke-linecap="round"/>',
+              eyes:'open', mouth:'<path d="M90 154 Q100 157 110 154" stroke="#8a2f2f" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+              blush:0, extra:'' },
+    soft:   { brow:'<path d="M54 64 Q70 60 86 64 M114 64 Q130 60 146 64" stroke="#2e1a10" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+              eyes:'sparkle', mouth:'<path d="M88 152 Q100 160 112 152" stroke="#b0435a" stroke-width="4" fill="none" stroke-linecap="round"/>',
+              blush:1, extra:'' },
+    happy:  { brow:'<path d="M54 60 Q70 56 86 60 M114 60 Q130 56 146 60" stroke="#2e1a10" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+              eyes:'closed', mouth:'<path d="M84 148 Q100 166 116 148 Q100 156 84 148Z" fill="#b0435a"/>',
+              blush:2, extra:'' },
+    blush:  { brow:'<path d="M54 64 Q70 60 86 64 M114 64 Q130 60 146 64" stroke="#2e1a10" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+              eyes:'shy', mouth:'<path d="M88 152 Q100 159 112 152" stroke="#b0435a" stroke-width="4" fill="none" stroke-linecap="round"/>',
+              blush:2, extra:'' },
+    surprised:{ brow:'<path d="M54 58 Q70 54 86 58 M114 58 Q130 54 146 58" stroke="#2e1a10" stroke-width="3.5" fill="none" stroke-linecap="round"/>',
+              eyes:'wide', mouth:'<ellipse cx="100" cy="156" rx="7" ry="9" fill="#8a2f2f"/>',
+              blush:0, extra:'' }
+  }[expr] || {};
+  function eyesSVG(mode){
+    const L=72, R=128, Y=104;
+    const white = c => `<ellipse cx="${c}" cy="${Y}" rx="13" ry="15" fill="#fff"/>`;
+    const iris = (c,rx,ry) => `<ellipse cx="${c}" cy="${Y+2}" rx="${rx}" ry="${ry}" fill="#7a4a21"/>`
+      + `<circle cx="${c}" cy="${Y+3}" r="${Math.min(rx,ry)*0.55}" fill="#1c1008"/>`
+      + `<circle cx="${c-3.5}" cy="${Y-4}" r="3.4" fill="#fff"/><circle cx="${c+3}" cy="${Y+6}" r="1.6" fill="#fff" opacity="0.85"/>`;
+    const lash = c => `<path d="M${c-13} ${Y-12} Q${c} ${Y-20} ${c+13} ${Y-12}" stroke="#241207" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+    if(mode==='closed') return `<path d="M60 104 Q72 114 84 104 M116 104 Q128 114 140 104" stroke="#241207" stroke-width="4.5" fill="none" stroke-linecap="round"/>`;
+    if(mode==='narrow') return white(L)+white(R)+iris(L,9,8)+iris(R,9,8)+lash(L)+lash(R);
+    if(mode==='half') return white(L)+white(R)
+      + `<path d="M${L-13} ${Y-12} L${L+13} ${Y-12} L${L+13} ${Y-2} L${L-13} ${Y-2}Z" fill="#ffd9b8"/>`
+      + `<path d="M${R-13} ${Y-12} L${R+13} ${Y-12} L${R+13} ${Y-2} L${R-13} ${Y-2}Z" fill="#ffd9b8"/>`
+      + iris(L,9,7)+iris(R,9,7)+lash(L)+lash(R);
+    if(mode==='wide') return white(L)+white(R)+iris(L,8,11)+iris(R,8,11)+lash(L)+lash(R);
+    if(mode==='shy') return white(L)+white(R)+iris(L-3,10,11)+iris(R-3,10,11)+lash(L)+lash(R);
+    // open / sparkle
+    let s = white(L)+white(R)+iris(L,10,12)+iris(R,10,12)+lash(L)+lash(R);
+    if(mode==='sparkle') s += `<circle cx="${L+8}" cy="${Y-10}" r="1.8" fill="#fff"/><circle cx="${R+8}" cy="${Y-10}" r="1.8" fill="#fff"/>`;
+    return s;
+  }
+  const blushSVG = E.blush ? `<ellipse cx="52" cy="128" rx="${7+E.blush*3}" ry="5" fill="#ff9db0" opacity="${0.35+E.blush*0.2}"/>`
+    + `<ellipse cx="148" cy="128" rx="${7+E.blush*3}" ry="5" fill="#ff9db0" opacity="${0.35+E.blush*0.2}"/>` : '';
+  return `<svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">`
+    // back hair
+    + `<path d="M38 118 Q30 30 100 24 Q170 30 162 118 L166 190 Q150 178 146 150 L54 150 Q50 178 34 190 Z" fill="#3a2113"/>`
+    + `<path d="M52 60 Q70 34 100 32" stroke="#6b4423" stroke-width="7" fill="none" stroke-linecap="round" opacity="0.8"/>`
+    // neck + shoulders + top
+    + `<path d="M88 168 L88 186 Q100 192 112 186 L112 168Z" fill="#f2b98d"/>`
+    + `<path d="M62 200 Q100 186 138 200 L150 260 L50 260 Z" fill="#7b3fa0"/>`
+    + `<path d="M88 196 Q100 206 112 196 L112 210 Q100 218 88 210Z" fill="#5e2f7d"/>`
+    + `<circle cx="100" cy="214" r="5" fill="#ffd75e"/>`
+    + `<path d="M62 200 Q50 230 46 260 L70 260 Q72 230 78 208Z" fill="#9350bd" opacity="0.55"/>`
+    // face
+    + `<path d="M52 96 Q50 150 74 172 Q92 186 100 186 Q108 186 126 172 Q150 150 148 96 Q148 52 100 50 Q52 52 52 96Z" fill="#ffd9b8"/>`
+    + `<path d="M52 96 Q50 150 74 172 Q92 186 100 186 L100 50 Q52 52 52 96Z" fill="#ffce9e" opacity="0.35"/>`
+    // ears + earrings
+    + `<circle cx="50" cy="120" r="7" fill="#ffd9b8"/><circle cx="150" cy="120" r="7" fill="#ffd9b8"/>`
+    + `<circle cx="50" cy="130" r="3" fill="#ffd75e"/><circle cx="150" cy="130" r="3" fill="#ffd75e"/>`
+    // bangs
+    + `<path d="M48 92 Q46 40 100 38 Q154 40 152 92 L140 66 L132 88 L120 62 L110 86 L100 60 L90 86 L80 62 L68 88 L60 66 Z" fill="#3a2113"/>`
+    + `<path d="M60 52 Q78 44 100 43" stroke="#6b4423" stroke-width="5" fill="none" stroke-linecap="round" opacity="0.85"/>`
+    // side locks
+    + `<path d="M48 92 Q44 140 52 168 Q58 150 56 110Z" fill="#3a2113"/>`
+    + `<path d="M152 92 Q156 140 148 168 Q142 150 144 110Z" fill="#3a2113"/>`
+    // hairclip
+    + `<path d="M132 52 l4 9 10 1 -7 7 2 10 -9 -5 -9 5 2 -10 -7 -7 10 -1Z" fill="#ffd75e"/>`
+    + E.brow + eyesSVG(E.eyes)
+    + `<path d="M100 128 l-4 8 q4 3 8 0" stroke="#d89a6a" stroke-width="2.5" fill="none" stroke-linecap="round"/>`
+    + blushSVG + E.mouth + (E.extra||'')
+    + `</svg>`;
 }
 
-/* ============ STORY DATA ============ */
+/* ================= STORY ================= */
 const STORY = {
-  start: { bg:'bg-home', expr:'angry', speaker:'BUBU 😡', lines:[
+  start: { bg:'bg-home', card:'Scene 1 — The Storm 🌩️', expr:'angry', speaker:'BUBU 😡', lines:[
       "Tumhe yaad bhi hai aaj kya tha?!",
       "Hamari ANNIVERSARY! Aur tum... tum to bhool hi gaye!",
       "Bolo. Koi safai hai tumhare paas?"
@@ -136,7 +200,7 @@ const STORY = {
       { t:'"Bahir chalein? Aaj ki shaam tumhare naam." 💫', anger:-6, expr:'soft', next:'spot' },
       { t:'"Ghar par hi movie dekh lete hain?" 🎬', anger:+4, expr:'annoyed', next:'spot' }
   ]},
-  spot: { bg:'bg-street', expr:'neutral', speaker:'Tum 🤔', lines:[
+  spot: { bg:'bg-street', card:'Scene 2 — Date Night 🌙', expr:'neutral', speaker:'Tum 🤔', lines:[
       "Use kahan le jaoon? Jagah ka chunao sab kuch tay karega..."
     ], choices:[
       { t:'🍵 Chai Dhaba — desi romantic vibes', anger:-10, expr:'soft', next:'date1', setBg:'bg-cafe' },
@@ -147,19 +211,37 @@ const STORY = {
       "Hmm... jagah to achi chuni hai.",
       "Achha batao — main kaisi lag rahi hoon?"
     ], choices:[
-      { t:'"Tum aaj chaand lag rahi ho." 🌙', anger:-12, expr:'blush', next:'crisis' },
-      { t:'"Ye dress tum par bohat jach rahi hai." 👗', anger:-14, expr:'blush', next:'crisis' },
-      { t:'"Tumhari dost wese zyada pretty hai." 💀', anger:+26, expr:'angry', next:'crisis' }
+      { t:'"Tum aaj chaand lag rahi ho." 🌙', anger:-12, expr:'blush', next:'icecream' },
+      { t:'"Ye dress tum par bohat jach rahi hai." 👗', anger:-14, expr:'blush', next:'icecream' },
+      { t:'"Tumhari dost wese zyada pretty hai." 💀', anger:+26, expr:'angry', next:'icecream' }
   ]},
-  crisis: { bg:'bg-cafe', expr:'annoyed', speaker:'BUBU 😒', lines:[
+  icecream: { bg:'bg-cafe', card:'Scene 3 — Kulfi Wala 🍨', expr:'neutral', speaker:'BUBU 😐', lines:[
+      "*door se kulfi wale ki ghanti bajti hai* 🔔",
+      "Hmm... kulfi khane ka dil kar raha hai."
+    ], choices:[
+      { t:'Uske liye kesar kulfi lo 🍨', anger:-10, expr:'soft', next:'crisis' },
+      { t:'Dono ke liye lo — ek dusre ko khilao 😄', anger:-14, expr:'blush', next:'crisis' },
+      { t:'"Diet par ho na tum?" 😬', anger:+12, expr:'angry', next:'crisis' }
+  ]},
+  crisis: { bg:'bg-cafe', expr:'surprised', speaker:'BUBU 😒', lines:[
       "*tumhara phone bajta hai — purani dost ka message aaya hai*",
       "Ye... ye kis ka message hai?! Jawab do!"
     ], choices:[
-      { t:'"Dekh lo khud — kuch chhupana nahi hai." 📱', anger:-12, expr:'soft', next:'final' },
-      { t:'"Wo... wo to bas class fellow hai!" 😰', anger:+10, expr:'angry', next:'final' },
-      { t:'Phone silent par laga do aur uska haath pakro 🤝', anger:-16, expr:'blush', next:'final' }
+      { t:'"Dekh lo khud — kuch chhupana nahi hai." 📱', anger:-12, expr:'soft', next:'rain' },
+      { t:'"Wo... wo to bas class fellow hai!" 😰', anger:+10, expr:'angry', next:'rain' },
+      { t:'Phone silent par laga do aur uska haath pakro 🤝', anger:-16, expr:'blush', next:'rain' }
   ]},
-  final: { bg:'bg-park', expr:'neutral', speaker:'BUBU 🌙', lines:[
+  rain: { bg:'bg-park', card:'Scene 4 — Barish 🌧️', expr:'neutral', speaker:'BUBU 🌙', lines:[
+      "Bahar niklo to halki halki barish shuru ho gayi hai...",
+      "Mausam... ajeeb sa romantic ho gaya hai."
+    ], choices:[
+      { t:'Haath pakar ke barish mein bheegte hain 🌧️💕', anger:-12, expr:'blush', next:'hearts' },
+      { t:'"Chalo, garam chai aur pakoray khate hain!" ☕', anger:-8, expr:'soft', next:'hearts' },
+      { t:'"Tumhara makeup kharab ho jayega!" 💄', anger:+14, expr:'angry', next:'hearts' }
+  ]},
+  hearts: { minigame:true, bg:'bg-park', title:'💗 DIL PAKRO!',
+            sub:'Girte hue dil tap karo — har dil = -2% narazgi!', duration:20, next:'final' },
+  final: { bg:'bg-park', card:'Final Scene 🌙', expr:'neutral', speaker:'BUBU 🌙', lines:[
       "Chandni mein walk karte hain... sukoon hai.",
       "To... aaj ke din ko ek lafz mein bayaan karo."
     ], choices:[
@@ -180,8 +262,8 @@ function getEnding(anger){
     text:'Usne tumhara number block kar diya hai.<br>Worst ending. <b>RIP romance 2026-2026.</b>' };
 }
 
-/* ============ ENGINE ============ */
-const G = { anger:70, node:null, lineIdx:0, typing:false, typeTimer:null, state:'menu' };
+/* ================= ENGINE ================= */
+const G = { anger:70, node:null, lineIdx:0, typing:false, typeTimer:null, state:'menu', muted:false };
 const $ = id => document.getElementById(id);
 function setChar(expr){ $('char').innerHTML = charSVG(expr); }
 function setBg(cls){ $('bg').className = cls; }
@@ -191,6 +273,11 @@ function updateMeter(){
   $('meterVal').textContent = a + '%';
   $('meterFill').style.background = a>66 ? 'linear-gradient(90deg,#ff4d6d,#ff8fa3)'
     : a>33 ? 'linear-gradient(90deg,#ffb300,#ff8fa3)' : 'linear-gradient(90deg,#51e08a,#a0f0c0)';
+}
+function showCard(text){
+  $('cardText').textContent = text;
+  $('card').classList.add('show');
+  setTimeout(()=>$('card').classList.remove('show'), 1700);
 }
 function typeLine(text){
   const el = $('text'); el.textContent='';
@@ -210,7 +297,9 @@ function typeLine(text){
 function showNode(id){
   if(id==='__end__'){ showEnding(); return; }
   const n = STORY[id]; G.node = n; G.lineIdx = 0;
+  if(n.minigame){ startMinigame(n); return; }
   setBg(n.bg); setChar(n.expr); $('speaker').textContent = n.speaker;
+  if(n.card) showCard(n.card);
   $('char').classList.add('talk');
   typeLine(n.lines[0]);
 }
@@ -227,9 +316,16 @@ function showChoices(n){
 function pickChoice(c){
   G.anger = Math.max(0, Math.min(100, G.anger + c.anger));
   updateMeter();
+  if(c.anger < 0){ heartBurst(); hopChar(); }
+  else if(c.anger > 0){ shakeScreen(); }
   if(c.setBg) setBg(c.setBg);
   if(c.expr) setChar(c.expr);
   showNode(c.next);
+}
+function hopChar(){ const ch=$('char'); ch.classList.remove('hop'); void ch.offsetWidth; ch.classList.add('hop'); }
+function shakeScreen(){
+  const s=$('stage'); s.classList.remove('shake'); void s.offsetWidth; s.classList.add('shake');
+  const f=$('flash'); f.classList.add('on'); setTimeout(()=>f.classList.remove('on'), 220);
 }
 function showEnding(){
   G.state='end';
@@ -238,7 +334,8 @@ function showEnding(){
   $('endingTitle').textContent = e.title;
   $('endingText').innerHTML = e.text + '<br><br>Final narazgi: <b>'+G.anger+'%</b>';
   $('ending').classList.remove('hidden');
-  $('dlg').classList.add('hidden'); $('meterWrap').classList.add('hidden');
+  $('dlg').classList.add('hidden'); $('meterWrap').classList.add('hidden'); $('muteBtn').classList.add('hidden');
+  stopMusic();
 }
 $('dlg').addEventListener('click', (ev)=>{
   if(ev.target.classList.contains('choice')) return;
@@ -250,26 +347,171 @@ $('dlg').addEventListener('click', (ev)=>{
     if(needChoice) showChoices(n);
     return;
   }
-  const n=G.node; if(!n) return;
+  const n=G.node; if(!n || !n.lines) return;
   const atLast = n.choices && G.lineIdx===n.lines.length-1;
-  if(atLast) return; // choices showing — must pick one
+  if(atLast) return;
   if(G.lineIdx < n.lines.length-1){ G.lineIdx++; typeLine(n.lines[G.lineIdx]); }
 });
 $('startBtn').onclick=()=>{
   $('menu').classList.add('hidden');
-  $('dlg').classList.remove('hidden'); $('meterWrap').classList.remove('hidden');
-  G.anger=70; G.state='play'; updateMeter(); showNode('start');
+  $('dlg').classList.remove('hidden'); $('meterWrap').classList.remove('hidden'); $('muteBtn').classList.remove('hidden');
+  G.anger=70; G.state='play'; updateMeter(); startMusic(); showNode('start');
 };
 $('againBtn').onclick=()=>{
   $('ending').classList.add('hidden');
-  $('dlg').classList.remove('hidden'); $('meterWrap').classList.remove('hidden');
-  G.anger=70; G.state='play'; updateMeter(); showNode('start');
+  $('dlg').classList.remove('hidden'); $('meterWrap').classList.remove('hidden'); $('muteBtn').classList.remove('hidden');
+  G.anger=70; G.state='play'; updateMeter(); startMusic(); showNode('start');
 };
+$('muteBtn').onclick=function(){ G.muted=!G.muted; this.textContent=G.muted?'🔇':'🎵'; if(G.muted) stopMusic(); else startMusic(); };
 (function(){ const s=$('stars'); for(let i=0;i<40;i++){ const e=document.createElement('i');
   e.style.left=Math.random()*100+'%'; e.style.top=Math.random()*60+'%';
   e.style.animationDelay=(Math.random()*2.5)+'s'; s.appendChild(e); } })();
 
-window.__vn = { STORY, getEnding, charSVG };
+/* ================= FX: particles ================= */
+const fxC = $('fx'), fxX = fxC.getContext('2d');
+let parts = [];
+function fxSize(){ const r=$('stage').getBoundingClientRect(); fxC.width=r.width; fxC.height=r.height; }
+window.addEventListener('resize', fxSize);
+function burst(x, y, emoji, n){
+  const r=$('stage').getBoundingClientRect();
+  for(let i=0;i<(n||14);i++){
+    parts.push({ x:x??r.width/2, y:y??r.height*0.45, vx:(Math.random()-0.5)*260, vy:-Math.random()*280-60,
+                 life:1, emoji:emoji||'💗', size:16+Math.random()*16 });
+  }
+}
+function heartBurst(){ burst(null,null,'💗',16); burst(null,null,'✨',8); }
+function fxLoop(dt){
+  const r=$('stage').getBoundingClientRect();
+  if(fxC.width!==Math.round(r.width)) fxSize();
+  fxX.clearRect(0,0,fxC.width,fxC.height);
+  parts = parts.filter(p=>p.life>0);
+  for(const p of parts){
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=420*dt; p.life-=dt*0.9;
+    fxX.globalAlpha=Math.max(0,p.life);
+    fxX.font=p.size+'px serif'; fxX.textAlign='center';
+    fxX.fillText(p.emoji,p.x,p.y);
+  }
+  fxX.globalAlpha=1;
+}
+setInterval(()=>{
+  if(G.state!=='play') return;
+  if(Math.random()<0.5){
+    const r=$('stage').getBoundingClientRect();
+    parts.push({ x:Math.random()*r.width, y:r.height+20, vx:(Math.random()-0.5)*20, vy:-40-Math.random()*40,
+                 life:2.4, emoji:Math.random()<0.7?'💗':'✨', size:12+Math.random()*10 });
+  }
+}, 900);
+(function fxTick(){ let l=performance.now();
+  function f(t){ fxLoop(Math.min(0.05,(t-l)/1000)); l=t; requestAnimationFrame(f); }
+  requestAnimationFrame(f);
+})();
+
+/* ================= MUSIC (soft pads) ================= */
+let mCtx=null, mTimer=null;
+const CHORDS = [[110,130.81,164.81],[87.31,110,130.81],[130.81,164.81,196],[98,123.47,146.83]];
+function startMusic(){
+  if(G.muted || mTimer) return;
+  try{
+    if(!mCtx) mCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(mCtx.state==='suspended') mCtx.resume();
+    let ci=0;
+    const playChord=()=>{
+      if(G.muted) return;
+      const t=mCtx.currentTime;
+      CHORDS[ci%CHORDS.length].forEach(f=>{
+        const o=mCtx.createOscillator(), g=mCtx.createGain(), fl=mCtx.createBiquadFilter();
+        o.type='triangle'; o.frequency.value=f;
+        fl.type='lowpass'; fl.frequency.value=900;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.linearRampToValueAtTime(0.035,t+1.2);
+        g.gain.linearRampToValueAtTime(0.0001,t+3.4);
+        o.connect(fl); fl.connect(g); g.connect(mCtx.destination);
+        o.start(t); o.stop(t+3.6);
+      });
+      ci++;
+    };
+    playChord(); mTimer=setInterval(playChord, 3200);
+  }catch(e){ /* audio unavailable */
+  }
+}
+function stopMusic(){ if(mTimer){ clearInterval(mTimer); mTimer=null; } }
+
+/* ================= MINIGAME: DIL PAKRO ================= */
+const MG = { active:false, hearts:[], caught:0, timeLeft:0, timer:null, raf:0, node:null };
+function startMinigame(n){
+  MG.node=n; MG.active=true; MG.caught=0; MG.timeLeft=n.duration; MG.hearts=[];
+  $('mg').classList.remove('hidden');
+  $('dlg').classList.add('hidden');
+  $('mgScore').textContent='0'; $('mgTime').textContent=n.duration;
+  $('mgBarFill').style.width='100%';
+  setChar('surprised'); setBg(n.bg);
+  showCard(n.title);
+  mgSize();
+  let last=0;
+  MG.timer=setInterval(()=>{
+    MG.timeLeft--;
+    $('mgTime').textContent=Math.max(0,MG.timeLeft);
+    $('mgBarFill').style.width=(MG.timeLeft/n.duration*100)+'%';
+    if(Math.random()<0.55 && MG.hearts.length<9){
+      const r=$('mgCanvas').getBoundingClientRect();
+      MG.hearts.push({ x:30+Math.random()*(r.width-60), y:-30, vy:120+Math.random()*140,
+                       size:26+Math.random()*14, wob:Math.random()*6.28 });
+    }
+    if(MG.timeLeft<=0) endMinigame();
+  },1000);
+  const loop=(t)=>{
+    if(!MG.active) return;
+    const dt=Math.min(0.05,(t-last)/1000||0.016); last=t;
+    mgDraw(dt);
+    MG.raf=requestAnimationFrame(loop);
+  };
+  MG.raf=requestAnimationFrame(loop);
+}
+function mgSize(){ const c=$('mgCanvas'), r=c.getBoundingClientRect(); c.width=r.width; c.height=r.height; }
+function mgDraw(dt){
+  const c=$('mgCanvas'), x=c.getContext('2d');
+  x.clearRect(0,0,c.width,c.height);
+  for(const h of MG.hearts){
+    h.y+=h.vy*dt; h.wob+=dt*4; h.x+=Math.sin(h.wob)*30*dt;
+    x.font=h.size+'px serif'; x.textAlign='center'; x.textBaseline='middle';
+    x.fillText('💗', h.x, h.y);
+  }
+  MG.hearts = MG.hearts.filter(h=>h.y < c.height+40);
+}
+function mgTap(px,py){
+  for(let i=MG.hearts.length-1;i>=0;i--){
+    const h=MG.hearts[i];
+    if(Math.hypot(h.x-px,h.y-py) < h.size){
+      MG.hearts.splice(i,1); MG.caught++;
+      $('mgScore').textContent=MG.caught;
+      const r=$('mgCanvas').getBoundingClientRect();
+      burst(r.width/2, r.height/2, '💗', 5);
+      return true;
+    }
+  }
+  return false;
+}
+function endMinigame(){
+  if(!MG.active) return;
+  MG.active=false;
+  clearInterval(MG.timer); cancelAnimationFrame(MG.raf);
+  const reduce = MG.caught*2;
+  G.anger = Math.max(0, Math.min(100, G.anger - reduce));
+  updateMeter();
+  $('mg').classList.add('hidden');
+  $('dlg').classList.remove('hidden');
+  setChar(reduce>10 ? 'happy' : 'soft');
+  heartBurst();
+  setTimeout(()=>{ showNode(MG.node.next); }, 900);
+}
+$('mgCanvas').addEventListener('pointerdown', (e)=>{
+  const r=$('mgCanvas').getBoundingClientRect();
+  mgTap(e.clientX-r.left, e.clientY-r.top);
+});
+window.addEventListener('resize', ()=>{ if(MG.active) mgSize(); });
+
+window.__vn = { STORY, getEnding, charSVG, MG, mgTap, endMinigame,
+  _mgResult:(anger,caught)=>Math.max(0,Math.min(100,anger-caught*2)) };
 </script>
 </body>
 </html>
