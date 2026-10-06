@@ -251,7 +251,8 @@ $('dlg').addEventListener('click', (ev)=>{
     return;
   }
   const n=G.node; if(!n) return;
-  if(n.choices) return;
+  const atLast = n.choices && G.lineIdx===n.lines.length-1;
+  if(atLast) return; // choices showing — must pick one
   if(G.lineIdx < n.lines.length-1){ G.lineIdx++; typeLine(n.lines[G.lineIdx]); }
 });
 $('startBtn').onclick=()=>{
